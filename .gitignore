@@ -6,6 +6,3 @@
 
 # virtual environment
 .venv/
-
-# hide the report dir
-report/

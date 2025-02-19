@@ -1,0 +1,8 @@
+# soc pokec profile txt file
+*.txt
+
+# parquet files
+*.parquet
+
+# virtual environment
+.venv/

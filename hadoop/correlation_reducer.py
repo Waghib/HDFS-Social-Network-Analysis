@@ -1,82 +1,89 @@
 #!/usr/bin/env python3
 import sys
+import os
+import traceback
 from collections import defaultdict
-import math
 
-def calculate_correlation(x_values, y_values):
-    n = len(x_values)
+def calculate_correlation(values_x, values_y):
+    """Calculate Pearson correlation coefficient between two lists of values"""
+    n = len(values_x)
     if n < 2:
-        return 0
+        return None
     
-    # Calculate means
-    x_mean = sum(x_values) / n
-    y_mean = sum(y_values) / n
+    mean_x = sum(values_x) / n
+    mean_y = sum(values_y) / n
     
-    # Calculate correlation coefficient
-    numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, y_values))
-    denominator = math.sqrt(sum((x - x_mean) ** 2 for x in x_values) * 
-                          sum((y - y_mean) ** 2 for y in y_values))
+    covariance = sum((x - mean_x) * (y - mean_y) for x, y in zip(values_x, values_y))
+    variance_x = sum((x - mean_x) ** 2 for x in values_x)
+    variance_y = sum((y - mean_y) ** 2 for y in values_y)
     
-    if denominator == 0:
-        return 0
-    return numerator / denominator
+    if variance_x == 0 or variance_y == 0:
+        return None
+    
+    correlation = covariance / (variance_x ** 0.5 * variance_y ** 0.5)
+    return correlation
 
 def reduce_correlations():
-    current_type = None
-    current_key = None
-    
-    # Store values for correlation calculation
-    x_values = []
-    y_values = []
-    
-    # Store category statistics
-    category_stats = defaultdict(lambda: {'sum': 0, 'count': 0})
-    
-    for line in sys.stdin:
-        try:
-            # Parse input
-            analysis_type, key, value = line.strip().split('\t')
-            value = float(value)
-            
-            # If we're starting a new type or key
-            if current_type != analysis_type or (current_type == analysis_type and current_key != key):
-                if current_type == 'age_corr' and x_values:
-                    # Calculate and output correlation for age
-                    correlation = calculate_correlation(x_values, y_values)
-                    print(f'correlation\tage\t{correlation}')
-                    x_values = []
-                    y_values = []
-                elif current_type in ['gender_comp', 'region_comp'] and current_key:
-                    # Output average completion rate for category
-                    stats = category_stats[current_key]
-                    if stats['count'] > 0:
-                        avg_completion = stats['sum'] / stats['count']
-                        print(f'{current_type}_avg\t{current_key}\t{avg_completion}')
+    try:
+        # Debug information
+        sys.stderr.write(f"Starting reducer with Python: {sys.executable}\n")
+        sys.stderr.write(f"Current directory: {os.getcwd()}\n")
+        sys.stderr.write(f"Files in current directory: {os.listdir('.')}\n")
+        
+        # Store values for each category
+        age_values = []
+        age_completions = []
+        gender_data = defaultdict(list)  # gender -> [completion percentages]
+        visibility_data = defaultdict(list)  # visibility -> [completion percentages]
+        
+        # Process input from mapper
+        for line in sys.stdin:
+            try:
+                category, value, completion = line.strip().split('\t')
+                completion = float(completion)
                 
-                current_type = analysis_type
-                current_key = key
-                category_stats.clear()
-            
-            # Update statistics
-            if analysis_type == 'age_corr':
-                x_values.append(float(key))
-                y_values.append(value)
-            elif analysis_type in ['gender_comp', 'region_comp']:
-                category_stats[key]['sum'] += value
-                category_stats[key]['count'] += 1
-                
-        except Exception as e:
-            continue
-    
-    # Output final results
-    if current_type == 'age_corr' and x_values:
-        correlation = calculate_correlation(x_values, y_values)
-        print(f'correlation\tage\t{correlation}')
-    elif current_type in ['gender_comp', 'region_comp'] and current_key:
-        stats = category_stats[current_key]
-        if stats['count'] > 0:
-            avg_completion = stats['sum'] / stats['count']
-            print(f'{current_type}_avg\t{current_key}\t{avg_completion}')
+                if category == 'age':
+                    age = float(value)
+                    age_values.append(age)
+                    age_completions.append(completion)
+                elif category == 'gender':
+                    gender_data[value].append(completion)
+                elif category == 'visibility':
+                    visibility_data[value].append(completion)
+                    
+            except Exception as e:
+                sys.stderr.write(f"Error processing line: {line.strip()} - {str(e)}\n")
+                continue
+        
+        # Calculate and output age correlation
+        age_correlation = calculate_correlation(age_values, age_completions)
+        sys.stdout.write("\nAge vs Profile Completion Correlation:\n")
+        if age_correlation is not None:
+            sys.stdout.write(f"Pearson correlation coefficient: {age_correlation:.4f}\n")
+        else:
+            sys.stdout.write("Insufficient data for correlation calculation\n")
+        sys.stdout.flush()
+        
+        # Calculate and output gender statistics
+        sys.stdout.write("\nGender vs Profile Completion:\n")
+        for gender in sorted(gender_data):
+            completions = gender_data[gender]
+            avg_completion = sum(completions) / len(completions) if completions else 0
+            sys.stdout.write(f"{gender}: Average completion = {avg_completion:.2f}% (n={len(completions)})\n")
+        sys.stdout.flush()
+        
+        # Calculate and output visibility statistics
+        sys.stdout.write("\nProfile Visibility vs Completion:\n")
+        for visibility in sorted(visibility_data):
+            completions = visibility_data[visibility]
+            avg_completion = sum(completions) / len(completions) if completions else 0
+            sys.stdout.write(f"{visibility}: Average completion = {avg_completion:.2f}% (n={len(completions)})\n")
+        sys.stdout.flush()
+        
+    except Exception as e:
+        sys.stderr.write(f"Fatal error in reducer: {str(e)}\n")
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == '__main__':
     reduce_correlations()

@@ -1,79 +1,81 @@
 #!/usr/bin/env python3
 import sys
+import os
+import traceback
 from collections import defaultdict
-import json
 
 def reduce_demographics():
-    # Counters for categorical values
-    gender_counts = defaultdict(int)
-    region_counts = defaultdict(int)
-    
-    # Statistics for numerical values
-    age_values = []
-    completion_values = []
-    
-    # Process input
-    for line in sys.stdin:
-        try:
-            # Parse input
-            analysis_type, key, value = line.strip().split('\t')
-            
-            if analysis_type == 'gender':
-                # Convert gender codes to readable format
-                gender_key = 'Male' if key == '1' else 'Female' if key == '2' else f'Other ({key})'
-                gender_counts[gender_key] += 1
-            elif analysis_type == 'region':
-                region_counts[key] += 1
-            elif analysis_type == 'age':
-                age_values.append(int(key))
-            elif analysis_type == 'completion':
-                completion_values.append(int(key))
+    try:
+        # Debug information
+        sys.stderr.write(f"Starting reducer with Python: {sys.executable}\n")
+        sys.stderr.write(f"Current directory: {os.getcwd()}\n")
+        sys.stderr.write(f"Files in current directory: {os.listdir('.')}\n")
         
-        except Exception as e:
-            print(f'Error processing line: {str(e)}', file=sys.stderr)
-            continue
-    
-    # Calculate and output statistics
-    results = {
-        'gender_distribution': dict(gender_counts),
-        'region_distribution': dict(sorted(region_counts.items(), key=lambda x: x[1], reverse=True)[:20]),  # Top 20 regions
-        'age_statistics': calculate_stats(age_values),
-        'completion_statistics': calculate_stats(completion_values)
-    }
-    
-    # Add total counts
-    results['summary'] = {
-        'total_users': len(age_values),
-        'total_regions': len(region_counts),
-        'gender_ratio': {
-            'male_percentage': (gender_counts['Male'] / sum(gender_counts.values()) * 100) if gender_counts else 0,
-            'female_percentage': (gender_counts['Female'] / sum(gender_counts.values()) * 100) if gender_counts else 0
-        }
-    }
-    
-    # Output results as JSON
-    print(json.dumps(results, indent=2))
-
-def calculate_stats(values):
-    if not values:
-        return None
-    
-    n = len(values)
-    mean = sum(values) / n
-    sorted_values = sorted(values)
-    
-    return {
-        'count': n,
-        'mean': round(mean, 2),
-        'median': sorted_values[n//2],
-        'min': min(values),
-        'max': max(values),
-        'quartiles': {
-            'q1': sorted_values[n//4],
-            'q2': sorted_values[n//2],
-            'q3': sorted_values[3*n//4]
-        }
-    }
+        # Initialize counters for each category
+        age_groups = defaultdict(int)
+        genders = defaultdict(int)
+        regions = defaultdict(int)
+        visibilities = defaultdict(int)
+        
+        # Process input from mapper
+        for line in sys.stdin:
+            try:
+                category, value, count = line.strip().split('\t')
+                count = int(count)
+                
+                if category == 'age_group':
+                    age_groups[value] += count
+                elif category == 'gender':
+                    genders[value] += count
+                elif category == 'region':
+                    regions[value] += count
+                elif category == 'visibility':
+                    visibilities[value] += count
+                    
+            except Exception as e:
+                sys.stderr.write(f"Error processing line: {line.strip()} - {str(e)}\n")
+                continue
+        
+        # Output age group statistics
+        sys.stdout.write("\nAge Group Distribution:\n")
+        total_age = sum(age_groups.values())
+        for age_group in ['<18', '18-24', '25-34', '35-49', '50+']:
+            count = age_groups[age_group]
+            percentage = (count / total_age * 100) if total_age > 0 else 0
+            sys.stdout.write(f"{age_group}: {count} ({percentage:.2f}%)\n")
+        sys.stdout.flush()
+        
+        # Output gender statistics
+        sys.stdout.write("\nGender Distribution:\n")
+        total_gender = sum(genders.values())
+        for gender in sorted(genders):
+            count = genders[gender]
+            percentage = (count / total_gender * 100) if total_gender > 0 else 0
+            sys.stdout.write(f"{gender}: {count} ({percentage:.2f}%)\n")
+        sys.stdout.flush()
+        
+        # Output profile visibility statistics
+        sys.stdout.write("\nProfile Visibility:\n")
+        total_visibility = sum(visibilities.values())
+        for visibility in sorted(visibilities):
+            count = visibilities[visibility]
+            percentage = (count / total_visibility * 100) if total_visibility > 0 else 0
+            sys.stdout.write(f"{visibility}: {count} ({percentage:.2f}%)\n")
+        sys.stdout.flush()
+        
+        # Output top 10 regions
+        sys.stdout.write("\nTop 10 Regions:\n")
+        sorted_regions = sorted(regions.items(), key=lambda x: x[1], reverse=True)[:10]
+        total_regions = sum(regions.values())
+        for region, count in sorted_regions:
+            percentage = (count / total_regions * 100) if total_regions > 0 else 0
+            sys.stdout.write(f"{region}: {count} ({percentage:.2f}%)\n")
+        sys.stdout.flush()
+        
+    except Exception as e:
+        sys.stderr.write(f"Fatal error in reducer: {str(e)}\n")
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == '__main__':
     reduce_demographics()

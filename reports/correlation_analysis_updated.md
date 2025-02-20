@@ -1,6 +1,33 @@
 # Correlation Analysis Report
 
 ## Executive Summary
+This report presents the findings from our correlation analysis of the Pokec social network dataset, focusing on profile completion rates and their relationships with various user characteristics. The analysis was performed using Hadoop MapReduce on a sample of user profiles, with visualizations generated from a representative sample of 10,000 profiles.
+
+## Visualizations
+
+The following visualizations have been generated to help understand the relationships between different variables:
+
+1. **Gender vs Profile Completion** (`completion_vs_gender.png`):
+   - Boxplot showing the distribution of profile completion rates by gender
+   - Clearly demonstrates the higher completion rates among women
+
+2. **Profile Visibility vs Completion** (`completion_vs_public.png`):
+   - Boxplot comparing completion rates between public and private profiles
+   - Shows slightly higher completion rates for public profiles
+
+3. **Age vs Profile Completion** (`completion_vs_age.png`):
+   - Scatter plot with trend line showing the relationship between age and completion
+   - Demonstrates the strong positive correlation
+
+4. **Profile Completion Distribution** (`completion_distribution.png`):
+   - Histogram showing the overall distribution of profile completion rates
+   - Helps identify common completion levels and potential clusters
+
+5. **Correlation Heatmap** (`correlation_heatmap.png`):
+   - Visual representation of correlations between numerical variables
+   - Highlights the strength of relationships between different metrics
+
+## Executive Summary
 This report presents the findings from our correlation analysis of the Pokec social network dataset, focusing on profile completion rates and their relationships with various user characteristics. The analysis was performed using Hadoop MapReduce on a sample of 1,000 user profiles.
 
 ## Key Findings

@@ -9,3 +9,6 @@
 
 # data directory
 /data/
+
+# results directory
+/results/
